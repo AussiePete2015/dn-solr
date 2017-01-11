@@ -1,0 +1,12 @@
+---
+- name: Enable solr services on boot
+  command: "systemctl enable {{item}}"
+  with_items:
+    - fusion-zookeeper.service
+    - fusion-solr.service
+    - fusion-spark-master.service
+    - fusion-spark-worker.service
+    - fusion-api.service
+    - fusion-connectors.service
+    - fusion-ui.service
+  

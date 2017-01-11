@@ -1,0 +1,12 @@
+---
+- name: Create solr group
+  group:
+    name: solr
+    system: yes
+- name: Create solr user
+  user:
+    name: solr
+    group: solr
+    createhome: no
+    system: yes
+    

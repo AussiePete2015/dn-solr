@@ -1,0 +1,22 @@
+- name: Download solr distribution to /tmp
+  get_url:
+    url: "{{solr_url}}"
+    dest: /tmp
+    mode: 0644
+    validate_certs: no
+  environment: "{{environment_vars}}"
+- name: Create "{{solr_dir}}"
+  file:
+    path: "{{solr_dir}}"
+    state: directory
+    owner: solr
+    group: solr
+- name: Unpack solr distribution into "{{solr_dir}}"
+  unarchive:
+    copy: no
+    src: "/tmp/fusion-2.4.4.tar.gz"
+    dest: "{{solr_dir}}"
+    extra_opts: [ "--strip-components=1" ]
+    owner: solr
+    group: solr
+    

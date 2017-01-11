@@ -1,0 +1,6 @@
+---
+- name: Create solr service files
+  command: "{{solr_dir}}/init/systemd/install.sh"
+- name: restart systemctl daemon
+  command: systemctl daemon-reload
+  
