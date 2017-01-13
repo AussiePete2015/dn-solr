@@ -123,7 +123,7 @@ Vagrant.configure("2") do |config|
   # end
 
   config.vm.provision "ansible" do |ansible|
-    ansible.playbook = "solr-centos-7.yml"
+    ansible.playbook = "site.yml"
     ansible.extra_vars = {
       proxy_env: { http_proxy: proxy, no_proxy: no_proxy },
       # solr_url: "https://download.lucidworks.com/fusion-2.4.4.tar.gz",
