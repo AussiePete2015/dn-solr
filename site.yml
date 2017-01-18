@@ -1,6 +1,6 @@
 ---
 - name: Install/configure solr server
-  hosts: all
+  hosts: "{{host_inventory}}"
   become: true
   roles:
     - ensure-interfaces-up
