@@ -1,3 +1,4 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
 - name: Download solr distribution to /tmp
   get_url:
     url: "{{solr_url}}"

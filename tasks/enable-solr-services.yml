@@ -1,3 +1,4 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Enable solr services on boot
   command: "systemctl enable {{item}}"
