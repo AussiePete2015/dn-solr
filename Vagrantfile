@@ -122,14 +122,17 @@ Vagrant.configure("2") do |config|
   #   push.app = "YOUR_ATLAS_USERNAME/YOUR_APPLICATION_NAME"
   # end
 
+  config.vm.define "#{options[:solr_addr]}"
+  solr_addr_array = "#{options[:solr_addr]}".split(/,\w*/)
+
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "site.yml"
     ansible.extra_vars = {
       proxy_env: { http_proxy: proxy, no_proxy: no_proxy },
       # solr_url: "https://download.lucidworks.com/fusion-2.4.4.tar.gz",
       solr_url: "https://10.0.2.2/fusion-2.4.4.tar.gz",
-      solr_addr: "#{options[:solr_addr]}",
       solr_dir: "/opt/fusion",
+      host_inventory: solr_addr_array
     }
   end
 
