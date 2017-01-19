@@ -50,6 +50,8 @@ end
 # you're doing.
 proxy = ENV['http_proxy'] || ""
 no_proxy = ENV['no_proxy'] || ""
+proxy_username = ENV['proxy_username'] || ""
+proxy_password = ENV['proxy_password'] || ""
 Vagrant.configure("2") do |config|
   if Vagrant.has_plugin?("vagrant-proxyconf")
     if $proxy
@@ -60,6 +62,12 @@ Vagrant.configure("2") do |config|
     end
     if $no_proxy
       config.proxy.no_proxy           = $no_proxy
+    end
+    if $proxy_username
+      config.proxy.proxy_username     = $proxy_username
+    end
+    if $proxy_password
+      config.proxy.proxy_password     = $proxy_password
     end
   end
   # The most common configuration options are documented and commented below.
@@ -129,7 +137,12 @@ Vagrant.configure("2") do |config|
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "site.yml"
     ansible.extra_vars = {
-      proxy_env: { http_proxy: proxy, no_proxy: no_proxy },
+      proxy_env: {
+        http_proxy: proxy,
+        no_proxy: no_proxy,
+        proxy_username: proxy_username,
+        proxy_password: proxy_password
+      },
       # solr_url: "https://download.lucidworks.com/fusion-2.4.4.tar.gz",
       solr_url: "https://10.0.2.2/fusion-2.4.4.tar.gz",
       solr_dir: "/opt/fusion",
