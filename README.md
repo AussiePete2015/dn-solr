@@ -13,11 +13,11 @@ To run the included playbook, change directories to the `dn-solr` subdirectory a
 ```bash
 $ export SOLR_URL="https://download.lucidworks.com/fusion-2.4.4.tar.gz"
 $ export SOLR_ADDR="192.168.34.12"
-$ export KAFKA_DISTRO="apache"
 $ export SOLR_DIR="/opt/fusion"
-$ echo "[all]\n${KAFKA_ADDR}" > hosts
+$ export SOLR_PACKAGE_LIST='["java-1.8.0-openjdk", "java-1.8.0-openjdk-devel"]'
+$ echo "[all]\n${SOLR_ADDR}" > hosts
 $ ansible-playbook site.yml --inventory-file hosts --extra-vars "solr_url=${SOLR_URL} \
-    solr_addr=${SOLR_ADDR} solr_dir=${SOLR_DIR}"
+    solr_addr=${SOLR_ADDR} solr_dir=${SOLR_DIR} solr_package_list=${SOLR_PACKAGE_LIST}"
 ```
 All of the variables shown in this example must be defined for the playbook to run successfully.
 
