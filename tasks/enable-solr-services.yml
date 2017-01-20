@@ -1,6 +1,7 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Enable solr services on boot
+  become: true
   command: "systemctl enable {{item}}"
   with_items:
     - fusion-zookeeper.service

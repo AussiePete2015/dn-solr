@@ -1,10 +1,12 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Create solr group
+  become: true
   group:
     name: solr
     system: yes
 - name: Create solr user
+  become: true
   user:
     name: solr
     group: solr
