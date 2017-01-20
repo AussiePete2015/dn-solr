@@ -1,7 +1,9 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Create solr service files
+  become: true
   command: "{{solr_dir}}/init/systemd/install.sh"
 - name: restart systemctl daemon
+  become: true
   command: systemctl daemon-reload
   

@@ -2,9 +2,10 @@
 ---
 - name: Install/configure solr server
   hosts: "{{host_inventory}}"
-  become: true
+  vars:
+    - combined_package_list: "{{ (default_packages|default([])) | union(solr_package_list) | union((install_packages_by_tag|default({})).solr|default([])) }}"
   roles:
     - ensure-interfaces-up
     - setup-web-proxy
-    - { role: install-packages, package_list: ["java-1.8.0-openjdk", "java-1.8.0-openjdk-devel"] }
+    - { role: install-packages, package_list: "{{combined_package_list}}" }
     - dn-solr

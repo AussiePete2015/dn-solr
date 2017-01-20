@@ -1,5 +1,6 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 - name: Download solr distribution to /tmp
+  become: true
   get_url:
     url: "{{solr_url}}"
     dest: /tmp
@@ -7,12 +8,14 @@
     validate_certs: no
   environment: "{{environment_vars}}"
 - name: Create "{{solr_dir}}"
+  become: true
   file:
     path: "{{solr_dir}}"
     state: directory
     owner: solr
     group: solr
 - name: Unpack solr distribution into "{{solr_dir}}"
+  become: true
   unarchive:
     copy: no
     src: "/tmp/fusion-2.4.4.tar.gz"
