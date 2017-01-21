@@ -1,0 +1,10 @@
+# (c) 2016 DataNexus Inc.  All Rights Reserved
+#
+# Defaults that are necessary for all deployments of
+# LucidWorks Fusion (Solr)
+---
+application: solr
+solr_url: "https://download.lucidworks.com/fusion-2.4.4.tar.gz"
+# solr_url: "https://10.0.2.2/fusion-2.4.4.tar.gz"
+solr_dir: "/opt/fusion"
+solr_package_list: ["java-1.8.0-openjdk", "java-1.8.0-openjdk-devel"]
