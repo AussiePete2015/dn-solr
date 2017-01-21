@@ -2,6 +2,8 @@
 ---
 - name: Install/configure solr server
   hosts: "{{host_inventory}}"
+  vars_files:
+    - vars/solr.yml
   vars:
     - combined_package_list: "{{ (default_packages|default([])) | union(solr_package_list) | union((install_packages_by_tag|default({})).solr|default([])) }}"
   roles:

@@ -5,6 +5,22 @@
 require 'optparse'
 require 'resolv'
 
+# monkey-patch that is used to leave unrecognized options in the ARGV
+# list so that they can be processed by underlying vagrant command
+class OptionParser
+  # Like order!, but leave any unrecognized --switches alone
+  def order_recognized!(args)
+    extra_opts = []
+    begin
+      order!(args) { |a| extra_opts << a }
+    rescue OptionParser::InvalidOption => e
+      extra_opts << e.args[0]
+      retry
+    end
+    args[0, 0] = extra_opts
+  end
+end
+
 options = {}
 
 optparse = OptionParser.new do |opts|
@@ -26,7 +42,7 @@ optparse = OptionParser.new do |opts|
 end
 
 begin
-  optparse.parse!
+  optparse.order_recognized!(ARGV)
 rescue SystemExit
   ;
 rescue Exception => e
@@ -145,8 +161,6 @@ Vagrant.configure("2") do |config|
       },
       # solr_url: "https://download.lucidworks.com/fusion-2.4.4.tar.gz",
       solr_url: "https://10.0.2.2/fusion-2.4.4.tar.gz",
-      solr_dir: "/opt/fusion",
-      solr_package_list: ["java-1.8.0-openjdk", "java-1.8.0-openjdk-devel"],
       host_inventory: solr_addr_array
     }
   end
