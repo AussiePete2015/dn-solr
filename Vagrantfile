@@ -22,6 +22,7 @@ class OptionParser
 end
 
 options = {}
+no_ip_commands = ['version', 'global-status', '--help', '-h']
 
 optparse = OptionParser.new do |opts|
   opts.banner    = "Usage: #{opts.program_name} [options]"
@@ -30,8 +31,22 @@ optparse = OptionParser.new do |opts|
   options[:solr_addr] = nil
   opts.on( '-s', '--solr-addr IP_ADDR', 'IP_ADDR of the solr server' ) do |solr_addr|
     # while parsing, trim an '=' prefix character off the front of the string if it exists
-    # (would occur if the value was passed using an option flag like '-k=192.168.1.1')
+    # (would occur if the value was passed using an option flag like '-s=192.168.1.1')
     options[:solr_addr] = solr_addr.gsub(/^=/,'')
+  end
+
+  options[:solr_path] = nil
+  opts.on( '-p', '--path SOLR_DIR', 'Path where the distribution should be installed' ) do |solr_path|
+    # while parsing, trim an '=' prefix character off the front of the string if it exists
+    # (would occur if the value was passed using an option flag like '-p=192.168.1.1')
+    options[:solr_path] = solr_path.gsub(/^=/,'')
+  end
+
+  options[:solr_url] = nil
+  opts.on( '-u', '--url SOLR_URL', 'URL the distribution should be downloaded from' ) do |solr_url|
+    # while parsing, trim an '=' prefix character off the front of the string if it exists
+    # (would occur if the value was passed using an option flag like '-u=http://localhost/tmp.tgz')
+    options[:solr_url] = solr_url.gsub(/^=/,'')
   end
 
   opts.on_tail( '-h', '--help', 'Display this screen' ) do
@@ -44,20 +59,29 @@ end
 begin
   optparse.order_recognized!(ARGV)
 rescue SystemExit
-  ;
+  exit
 rescue Exception => e
   print "ERROR: could not parse command (#{e.message})\n"
   print optparse
   exit 1
 end
 
-if !options[:solr_addr] && (ARGV[0] == "up" || ARGV[0] == "provision")
-  print "ERROR; server IP address must be supplied for 'up' and 'provision' commands\n"
+# check remaining arguments to see if the command requires
+# an IP address (or not)
+ip_required = (ARGV & no_ip_commands).empty?
+
+if ip_required && !options[:solr_addr]
+  print "ERROR; server IP address must be supplied for vagrant commands\n"
   print optparse
   exit 1
 elsif options[:solr_addr] && !(options[:solr_addr] =~ Resolv::IPv4::Regex)
   print "ERROR; input server IP address '#{options[:solr_addr]}' is not a valid IP address"
   exit 2
+end
+
+if options[:solr_url] && !(options[:solr_url] =~ URI::regexp)
+  print "ERROR; input Solr URL '#{options[:solr_url]}' is not a valid URL\n"
+  exit 3
 end
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
@@ -159,10 +183,18 @@ Vagrant.configure("2") do |config|
         proxy_username: proxy_username,
         proxy_password: proxy_password
       },
-      # solr_url: "https://download.lucidworks.com/fusion-2.4.4.tar.gz",
-      solr_url: "https://10.0.2.2/fusion-2.4.4.tar.gz",
       host_inventory: solr_addr_array
     }
+    # if defined, set the 'extra_vars[:solr_url]' value to the value that was passed in on
+    # the command-line (eg. "https://10.0.2.2/fusion-2.4.4.tar.gz")
+    if options[:solr_url]
+      ansible.extra_vars[:solr_url] = "#{options[:solr_url]}"
+    end
+    # if defined, set the 'extra_vars[:solr_path]' value to the value that was passed in on
+    # the command-line (eg. "/opt/fusion")
+    if options[:solr_path]
+      ansible.extra_vars[:solr_path] = "#{options[:solr_path]}"
+    end
   end
 
 end
