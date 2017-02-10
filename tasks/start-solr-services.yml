@@ -1,5 +1,5 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
-- name: Start solr services
+- name: Start fusion service
+  command: systemctl start fusion
   become: true
-  command: "{{solr_dir}}/init/systemd/start.sh"

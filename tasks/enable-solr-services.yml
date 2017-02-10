@@ -1,14 +1,5 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
-- name: Enable solr services on boot
+- name: Enable fusion services on boot
   become: true
-  command: "systemctl enable {{item}}"
-  with_items:
-    - fusion-zookeeper.service
-    - fusion-solr.service
-    - fusion-spark-master.service
-    - fusion-spark-worker.service
-    - fusion-api.service
-    - fusion-connectors.service
-    - fusion-ui.service
-  
+  command: systemctl enable fusion

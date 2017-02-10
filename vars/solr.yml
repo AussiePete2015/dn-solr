@@ -4,6 +4,24 @@
 # LucidWorks Fusion (Solr)
 ---
 application: solr
-solr_url: "https://download.lucidworks.com/fusion-2.4.4.tar.gz"
-solr_dir: "/opt/fusion"
+
+# the URL that should be used to download the Fusion (Solr) distribution
+# (Fusion is distributed as a gzipped tarfile)
+solr_url: "https://download.lucidworks.com/fusion-3.0.0.tar.gz"
+
+# the directory where the solr data will be written
+solr_data_dir: /opt/lucidworks/data
+
+# the interface Fusion (Solr) should listen on when running
+solr_iface: eth0
+
+# the directory that the distribution should be unpacked into
+solr_dir: "/opt/lucidworks"
+
+# the packages that need to be installed for Solr nodes (the JRE and JDK
+# packages from the OpenJDK project)
 solr_package_list: ["java-1.8.0-openjdk", "java-1.8.0-openjdk-devel"]
+
+# used to install Fusion (Solr) from a local (to the Ansible node) gzipped
+# tarfile (if it exists)
+local_solr_file: ""
