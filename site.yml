@@ -7,7 +7,14 @@
   vars:
     - combined_package_list: "{{ (default_packages|default([])) | union(solr_package_list) | union((install_packages_by_tag|default({})).solr|default([])) }}"
   roles:
-    - ensure-interfaces-up
-    - setup-web-proxy
-    - { role: install-packages, package_list: "{{combined_package_list}}" }
-    - dn-solr
+    - role: ensure-interfaces-up
+    - role: get-iface-addr
+      iface_name: "{{solr_iface}}"
+    - role: setup-web-proxy
+    - role: add-local-repository
+      yum_repository: "{{yum_repo_addr}}"
+      when: yum_repo_addr is defined
+    - role: install-packages
+      package_list: "{{combined_package_list}}"
+    - role: dn-solr
+      solr_addr: "{{iface_addr}}"

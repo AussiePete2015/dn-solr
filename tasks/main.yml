@@ -1,6 +1,8 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
-- include: add-solr-user.yml static=no tags=install,solr
-- include: install-lucidworks-fusion.yml static=no tags=install,solr
-- include: create-solr-services.yml static=no tags=install,solr
-- include: enable-solr-services.yml static=no tags=service-mgmt,solr
-- include: start-solr-services.yml static=no tags=service-mgmt,solr
+---
+- include: add-solr-user.yml static=no
+- include: install-lucidworks-fusion.yml static=no
+- include: setup-solr-server-properties.yml static=no
+- include: create-solr-services.yml static=no
+- include: enable-solr-services.yml static=no
+- include: start-solr-services.yml static=no
