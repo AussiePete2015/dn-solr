@@ -82,6 +82,13 @@ optparse = OptionParser.new do |opts|
     options[:yum_repo_addr] = yum_repo_addr.gsub(/^=/,'')
   end
 
+  options[:solr_data_dir] = nil
+  opts.on( '-r', '--remote-data-dir DATA_DIR', 'Data directory for Solr' ) do |solr_data_dir|
+    # while parsing, trim an '=' prefix character off the front of the string if it exists
+    # (would occur if the value was passed using an option flag like '-r="/data"')
+    options[:solr_data_dir] = solr_data_dir.gsub(/^=/,'')
+  end
+
   opts.on_tail( '-h', '--help', 'Display this screen' ) do
     print opts
     exit
@@ -125,10 +132,9 @@ if options[:solr_url] && options[:local_solr_file]
   exit 2
 end
 
-# if we're provisioning, then either the `--node` flag should be provided
-# and only contain a single node or the `--solr-list` flag must be provided and
-# contain multiple nodes that define a valid definition for solr cluster that
-# we're provisioning
+# if we're provisioning, then the `--solr-list` flag must be provided and either contain
+# a single node (for single-node deployments) or multiple nodes in a comma-separated list
+# (for multi-node deployments) that define a valid solr cluster
 solr_addr_array = []
 zookeeper_addr_array = []
 if provisioning_command || ip_required
@@ -172,10 +178,10 @@ if provisioning_command || ip_required
           if not_ip_addr_list.size > 0
             # if some of the values are not valid IP addresses, print an error and exit
             if not_ip_addr_list.size == 1
-              print "ERROR; input Solr IP address #{not_ip_addr_list} is not a valid IP address\n"
+              print "ERROR; input Zookeeper IP address #{not_ip_addr_list} is not a valid IP address\n"
               exit 2
             else
-              print "ERROR; input Solr IP addresses #{not_ip_addr_list} are not valid IP addresses\n"
+              print "ERROR; input Zookeeper IP addresses #{not_ip_addr_list} are not valid IP addresses\n"
               exit 2
             end
           end
@@ -289,6 +295,11 @@ if solr_addr_array.size > 0
             # the command-line (eg. "/opt/solr")
             if options[:solr_path]
               ansible.extra_vars[:solr_dir] = options[:solr_path]
+            end
+            # if defined, set the 'extra_vars[:solr_data_dir]' value to the value that was passed
+            # in on the command-line
+            if options[:solr_data_dir]
+              ansible.extra_vars[:solr_data_dir] = options[:solr_data_dir]
             end
             # if a zookeeper list was passed in and we're deploying more than one Solr,
             # node, then pass the values in that list through as an extra variable (for
