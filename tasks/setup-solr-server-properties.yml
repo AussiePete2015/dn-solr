@@ -39,16 +39,62 @@
       replace: '\g<1>\g<2>'
   become: true
   when: (zookeeper_nodes | default([])) != []
+# setup the garbage collection option we want to use
+- name: Change garbage algorithm used to the 'g1' algorithm
+  lineinfile:
+    dest: "{{full_solr_dir}}/conf/fusion.properties"
+    regexp: "^default.gc ="
+    line: "default.gc = g1"
+  become: true
+# if a `solr_data_dir` value was passed in, then ensure that directory
+# exists, move the contents of the default directory over to that
+# `solr_data_dir` directory, remove the default data directory, and replace
+# it with a soft link to the new `solr_data_dir` directory
+- block:
+  - name: "Ensure {{solr_data_dir}} directory exists"
+    file:
+      path: "{{solr_data_dir}}"
+      state: directory
+      owner: lucidworks
+      group: lucidworks
+  - name: "Get a list of the contents to copy over to the {solr_data_dir}} directory"
+    find:
+      paths: "{{full_solr_dir}}/data"
+      file_type: file
+    register: file_list
+  - find:
+      paths: "{{full_solr_dir}}/data"
+      file_type: directory
+    register: dir_list
+  become: true
+  when: not (solr_data_dir is undefined or solr_data_dir is none or solr_data_dir | trim == '')
+# loop through the items in our list and, if they don't exist in the new
+# data directory, move them over there
+- include: move-files.yml
+  with_items: "{{(dir_list.files + file_list.files) | map(attribute='path') | list}}"
+  when: not (solr_data_dir is undefined or solr_data_dir is none or solr_data_dir | trim == '')
+# and finally, now that the contents are moved, remove the default
+# data directory and replace it with a soft link
+- block:
+  - name: "Ensure {{full_solr_dir}}/data directory is removed"
+    file:
+      path: "{{full_solr_dir}}/data"
+      state: absent
+      owner: lucidworks
+      group: lucidworks
+  - name: "Setup {{full_solr_dir}}/data as a softlink to {{solr_data_dir}}"
+    file:
+      src: "{{solr_data_dir}}"
+      dest: "{{full_solr_dir}}/data"
+      state: link
+      owner: lucidworks
+      group: lucidworks
+  become: true
+  when: not (solr_data_dir is undefined or solr_data_dir is none or solr_data_dir | trim == '')
 # If this is a single-node deployment, then we'll also be starting up the
 # built-in Zookeeper instance that comes with Fusion; in that case, configure
 # that Zookeeper instance to use the data directory that was passed in
 - block:
-  - name: "Ensure {{solr_data_dir}} directory exists"
-    file:
-      path: "{{solr_data_dir}}/zookeeper"
-      state: directory
-      owner: lucidworks
-      group: lucidworks
   - name: And ensure that Zookeeper is configured to use that data directory
     lineinfile:
       dest: "{{full_solr_dir}}/conf/zookeeper/zoo.cfg"
