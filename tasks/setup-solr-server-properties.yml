@@ -96,6 +96,12 @@
 # built-in Zookeeper instance that comes with Fusion; in that case, configure
 # that Zookeeper instance to use the data directory that was passed in
 - block:
+  - name: "Ensure {{solr_data_dir}}/zookeeper directory exists"
+    file:
+      path: "{{solr_data_dir}}/zookeeper"
+      state: directory
+      owner: "{{solr_user}}"
+      group: "{{solr_group}}"
   - name: And ensure that Zookeeper is configured to use that data directory
     lineinfile:
       dest: "{{full_solr_dir}}/conf/zookeeper/zoo.cfg"
