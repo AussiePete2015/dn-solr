@@ -18,6 +18,11 @@ solr_iface: eth0
 # the directory that the distribution should be unpacked into
 solr_dir: "/opt/lucidworks"
 
+# the username and group that should be used when installing
+# and running Fusion (Solr)
+solr_user: "lucidworks"
+solr_group: "lucidworks"
+
 # the packages that need to be installed for Solr nodes (the JRE and JDK
 # packages from the OpenJDK project)
 solr_package_list: ["java-1.8.0-openjdk", "java-1.8.0-openjdk-devel"]

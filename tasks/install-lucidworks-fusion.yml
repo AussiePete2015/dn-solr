@@ -37,13 +37,13 @@
     file:
       path: "{{solr_dir}}"
       state: directory
-      owner: lucidworks
-      group: lucidworks
+      owner: "{{solr_user}}"
+      group: "{{solr_group}}"
   - name: Unpack solr distribution into "{{solr_dir}}"
     unarchive:
       copy: no
       src: "/tmp/{{local_filename}}"
       dest: "{{solr_dir}}"
-      owner: lucidworks
-      group: lucidworks
+      owner: "{{solr_user}}"
+      group: "{{solr_group}}"
   become: true
