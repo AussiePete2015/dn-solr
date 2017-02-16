@@ -1,8 +1,19 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - block:
+  - name: Modify the install script to comment-out service enablement/startup
+    replace:
+      dest: "{{full_solr_dir}}/init/systemd/install.sh"
+      regexp: "{{item}}"
+      replace: '\g<1>#\g<2>'
+    with_items:
+      - "^(.*)(systemctl enable.*)$"
+      - "^(.*)(systemctl start.*)$"
+      - "^(.*)(systemctl status.*)$"
   - name: Run the install script
     command: "{{full_solr_dir}}/init/systemd/install.sh"
+  - name: Modify permissions on the fusion distribution directory
+    command: "chown -R {{solr_user}}:{{solr_group}} {{solr_dir}}"
   - name: Restart the systemctl daemon
     command: systemctl daemon-reload
   become: true

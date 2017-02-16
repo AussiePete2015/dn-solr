@@ -1,14 +1,14 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - block:
-  - name: Create lucidworks group
+  - name: "Create {{solr_group}} group"
     group:
-      name: lucidworks
+      name: "{{solr_group}}"
       system: yes
-  - name: Create lucidworks user
+  - name: "Create {{solr_user}} user"
     user:
-      name: lucidworks
-      group: lucidworks
+      name: "{{solr_user}}"
+      group: "{{solr_group}}"
       createhome: no
       system: yes
   become: true
