@@ -54,6 +54,13 @@ optparse = OptionParser.new do |opts|
     options[:zookeeper_list] = zookeeper_list.gsub(/^=/,'')
   end
 
+  options[:zk_inventory_file] = nil
+  opts.on( '-i', '--zk-inventory-file FILE', 'Zookeeper (Ansible) inventory file' ) do |zk_inventory_file|
+    # while parsing, trim an '=' prefix character off the front of the string if it exists
+    # (would occur if the value was passed using an option flag like '-z=192.168.1.1')
+    options[:zk_inventory_file] = zk_inventory_file.gsub(/^=/,'')
+  end
+
   options[:solr_path] = nil
   opts.on( '-p', '--path SOLR_DIR', 'Path where the distribution should be installed' ) do |solr_path|
     # while parsing, trim an '=' prefix character off the front of the string if it exists
@@ -87,6 +94,11 @@ optparse = OptionParser.new do |opts|
     # while parsing, trim an '=' prefix character off the front of the string if it exists
     # (would occur if the value was passed using an option flag like '-r="/data"')
     options[:solr_data_dir] = solr_data_dir.gsub(/^=/,'')
+  end
+
+  options[:reset_proxy_settings] = false
+  opts.on( '-c', '--clear-proxy-settings', 'Clear existing proxy settings if no proxy is set' ) do |reset_proxy_settings|
+    options[:reset_proxy_settings] = true
   end
 
   opts.on_tail( '-h', '--help', 'Display this screen' ) do
@@ -129,6 +141,11 @@ end
 
 if options[:solr_url] && options[:local_solr_file]
   print "ERROR; the solr-url option and the local-solr-file options cannot be combined\n"
+  exit 2
+end
+
+if options[:zookeeper_list] && !options[:zk_inventory_file]
+  print "ERROR; the if a zookeeper list is defined, a zookeeper inventory file must also be provided\n"
   exit 2
 end
 
@@ -274,6 +291,9 @@ if solr_addr_array.size > 0
             # list in a single playbook run
             ansible.limit = "all"
             ansible.playbook = "site.yml"
+            ansible.groups = {
+              solf: solr_addr_array
+            }
             ansible.extra_vars = {
               proxy_env: {
                 http_proxy: proxy,
@@ -284,7 +304,9 @@ if solr_addr_array.size > 0
               solr_iface: "eth1",
               yum_repo_addr: options[:yum_repo_addr],
               local_solr_file: options[:local_solr_file],
-              host_inventory: solr_addr_array
+              host_inventory: solr_addr_array,
+              reset_proxy_settings: options[:reset_proxy_settings],
+              inventory_type: "static"
             }
             # if defined, set the 'extra_vars[:solr_url]' value to the value that was passed in on
             # the command-line (eg. "https://10.0.2.2/fusion-2.4.4.tar.gz")
@@ -306,6 +328,28 @@ if solr_addr_array.size > 0
             # use in configuring the SolrCloud cluster that we're deploying)
             if zookeeper_addr_array.size > 1 && solr_addr_array.size > 1
               ansible.extra_vars[:zookeeper_nodes] = zookeeper_addr_array
+              # if a zookeeper inventory file was passed in, then read that file
+              # and use the contents to construct an inventory hash to pass into
+              # our playbook
+              zookeeper_inventory = {}
+              zookeeper_inventory_file = options[:zk_inventory_file]
+              File.open(zookeeper_inventory_file, "r") do |file|
+                while (line = file.gets)
+                  split_line = line.split
+                  if split_line.size > 1 && zookeeper_addr_array.include?(split_line[0])
+                    hostname = split_line[0]
+                    inventory_hash = {}
+                    for val in split_line[1..-1]
+                      key,val = val.split('=')
+                      if val
+                        inventory_hash[key.to_sym] = val.delete("'")
+                      end
+                    end
+                    zookeeper_inventory[hostname] = inventory_hash
+                  end
+                end
+                ansible.extra_vars[:zookeeper_inventory] =  zookeeper_inventory
+              end
             end
           end     # end `machine.vm.provision "ansible" do |ansible|`
         end     # end `if machine_addr == solr_addr_array[-1]`

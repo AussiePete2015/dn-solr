@@ -30,3 +30,6 @@ solr_package_list: ["java-1.8.0-openjdk", "java-1.8.0-openjdk-devel"]
 # used to install Fusion (Solr) from a local (to the Ansible node) gzipped
 # tarfile (if it exists)
 local_solr_file: ""
+
+# path used to access private keys (defaults to the current working directory)
+private_key_path: "."
