@@ -1,5 +1,7 @@
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 - name: Start fusion service
-  command: systemctl start fusion
   become: true
+  service:
+    name: fusion
+    state: restarted

@@ -22,24 +22,24 @@
     lineinfile:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: "^FUSION_ZK="
-      line: "FUSION_ZK={{(zookeeper_nodes | default([])) | join(':2181,')}}:2181"
+      line: "FUSION_ZK={{(zk_nodes | default([])) | join(':2181,')}}:2181"
   - name: Set local address to address of NIC that Solr should listen on
     lineinfile:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: "^(#)?default.address ="
-      line: "default.address = {{iface_addr}}"
+      line: "default.address = {{solr_addr}}"
   - name: Define ZK Connect address for Solr
     lineinfile:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: "^(# )?default.zk.connect ="
-      line: "default.zk.connect = {{(zookeeper_nodes | default([])) | join(':2181,')}}:2181"
+      line: "default.zk.connect = {{(zk_nodes | default([])) | join(':2181,')}}:2181"
   - name: Disable startup of local Zookeeper instance
     replace:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: '^(.*)zookeeper, (.*)$'
       replace: '\g<1>\g<2>'
   become: true
-  when: (zookeeper_nodes | default([])) != []
+  when: (zk_nodes | default([])) != []
 # setup the garbage collection option we want to use
 - name: Change garbage algorithm used to the 'g1' algorithm
   lineinfile:
@@ -108,4 +108,4 @@
       regexp: "^dataDir="
       line: "dataDir={{solr_data_dir}}/zookeeper"
   become: true
-  when: (zookeeper_nodes | default([])) == []
+  when: (zk_nodes | default([])) == []
