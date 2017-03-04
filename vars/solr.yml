@@ -12,8 +12,13 @@ solr_url: "https://download.lucidworks.com/fusion-3.0.0.tar.gz"
 # the directory where the solr data will be written
 solr_data_dir: /opt/lucidworks/data
 
-# the interface Fusion (Solr) should listen on when running
-solr_iface: eth0
+# the names of the interfaces to use for the Fusion (Solr) services;
+# the "data" interface is the private interface that is used to communicate
+# with other members of the cluster (and Zookeeper), while the "api"
+# interface is the interface that the Fusion servers listen on for connections
+# from clients
+api_iface: "eth0"
+data_iface: "eth0"
 
 # the directory that the distribution should be unpacked into
 solr_dir: "/opt/lucidworks"

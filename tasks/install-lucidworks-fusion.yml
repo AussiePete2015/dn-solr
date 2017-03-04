@@ -27,6 +27,7 @@
     copy:
       src: "{{local_solr_file}}"
       dest: "/tmp"
+      mode: 0644
   - set_fact:
       local_filename: "{{local_solr_file | basename}}"
   when: install_from_dir
