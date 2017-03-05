@@ -23,11 +23,6 @@
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: "^FUSION_ZK="
       line: "FUSION_ZK={{(zk_nodes | default([])) | join(':2181,')}}:2181"
-  - name: Set local address to address of NIC that Solr should listen on
-    lineinfile:
-      dest: "{{full_solr_dir}}/conf/fusion.properties"
-      regexp: "^(#)?default.address ="
-      line: "default.address = {{solr_addr}}"
   - name: Define ZK Connect address for Solr
     lineinfile:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
@@ -40,12 +35,35 @@
       replace: '\g<1>\g<2>'
   become: true
   when: (zk_nodes | default([])) != []
-# setup the garbage collection option we want to use
-- name: Change garbage algorithm used to the 'g1' algorithm
-  lineinfile:
-    dest: "{{full_solr_dir}}/conf/fusion.properties"
-    regexp: "^default.gc ="
-    line: "default.gc = g1"
+# change the address where that the Fusion server listens on
+# for client connections as well as the address where the Fusion
+# server's UI is listening
+- block:
+  - name: Set default address and bind address to address of NIC that Fusion should listen on
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      regexp: "^(#)?default.{{item}} ="
+      line: "default.{{item}} = {{api_addr}}"
+    with_items:
+      - address
+      - bindAddress
+  - name: Set Solr address and bind address to address of NIC that Solr should listen on
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      regexp: "^(#)?solr.{{item}} ="
+      line: "solr.{{item}} = {{data_addr}}"
+    with_items:
+      - address
+      - bindAddress
+  - name: Set Zookeeper address and bind address when creating a local Zookeeper instance
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      regexp: "^(#)?zookeeper.{{item}} ="
+      line: "zookeeper.{{item}} = {{data_addr}}"
+    with_items:
+      - address
+      - bindAddress
+    when: (zk_nodes | default([])) == []
   become: true
 # if a `solr_data_dir` value was passed in, then ensure that directory
 # exists, move the contents of the default directory over to that
