@@ -38,3 +38,13 @@ local_solr_file: ""
 
 # path used to access private keys (defaults to the current working directory)
 private_key_path: "."
+
+# fusion.properties values
+default_gc_type: g1
+solr_java_ops: -Xms16g -Xmx16g -Xss256k
+ui_java_ops: -Xms1g -Xmx1g
+connectors_java_ops: -Xms3g -Xmx3g -Xss256k
+
+# systemd specific user limits 
+open_files: 32768
+processes_number: 65536

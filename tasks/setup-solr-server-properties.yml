@@ -38,28 +38,62 @@
 # change the address where that the Fusion server listens on
 # for client connections as well as the address where the Fusion
 # server's UI is listening
+# sets java opts for solr connectors and ui
+# sets solr home to avoid the need for creating a symlink
 - block:
   - name: Set default address and bind address to address of NIC that Fusion should listen on
     lineinfile:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: "^(#)?default.{{item}} ="
       line: "default.{{item}} = {{api_addr}}"
+      insertafter: "# By default"
     with_items:
       - address
       - bindAddress
+  - name: Set default GC
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      regexp: "^(#)?default.gc ="
+      line: "default.gc = {{default_gc_type}}"
+      backrefs: yes
   - name: Set Solr address and bind address to address of NIC that Solr should listen on
     lineinfile:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: "^(#)?solr.{{item}} ="
       line: "solr.{{item}} = {{data_addr}}"
+      insertafter: "^# Solr"
     with_items:
       - address
       - bindAddress
+  - name: Set solr java options
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      regexp: "^(#)?solr.jvmOptions ="
+      line: "solr.jvmOptions = {{solr_java_ops}}"
+      insertafter: "^# Solr"
+  - name: Set solr home dir
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      line: "solr.solr.home = {{solr_data_dir}}"
+      insertafter: "^# Solr"
+  - name: Set fusion ui java options
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      regexp: "^(#)?ui.jvmOptions ="
+      line: "ui.jvmOptions = {{ui_java_ops}}"
+      insertafter: "^# UI"
+  - name: Set fusion connectors java options
+    lineinfile:
+      dest: "{{full_solr_dir}}/conf/fusion.properties"
+      regexp: "^(#)?connectors.jvmOptions="
+      line: "connectors.jvmOptions = {{connectors_java_ops}}"
+      backrefs: yes
   - name: Set Zookeeper address and bind address when creating a local Zookeeper instance
     lineinfile:
       dest: "{{full_solr_dir}}/conf/fusion.properties"
       regexp: "^(#)?zookeeper.{{item}} ="
       line: "zookeeper.{{item}} = {{data_addr}}"
+      insertafter: "^# Zookeeper"
     with_items:
       - address
       - bindAddress
@@ -78,11 +112,11 @@
       group: "{{solr_group}}"
   - name: "Get a list of the contents to copy over to the {solr_data_dir}} directory"
     find:
-      paths: "{{full_solr_dir}}/data"
+      paths: "{{full_solr_dir}}/data/solr"
       file_type: file
     register: file_list
   - find:
-      paths: "{{full_solr_dir}}/data"
+      paths: "{{full_solr_dir}}/data/solr"
       file_type: directory
     register: dir_list
   become: true
@@ -92,20 +126,12 @@
 - include: move-files.yml
   with_items: "{{(dir_list.files + file_list.files) | map(attribute='path') | list}}"
   when: not (solr_data_dir is undefined or solr_data_dir is none or solr_data_dir | trim == '')
-# and finally, now that the contents are moved, remove the default
-# data directory and replace it with a soft link
+## and finally, now that the contents are moved, remove the default
 - block:
-  - name: "Ensure {{full_solr_dir}}/data directory is removed"
+  - name: "Ensure {{full_solr_dir}}/data/solr directory is removed"
     file:
-      path: "{{full_solr_dir}}/data"
+      path: "{{full_solr_dir}}/data/solr"
       state: absent
-      owner: "{{solr_user}}"
-      group: "{{solr_group}}"
-  - name: "Setup {{full_solr_dir}}/data as a softlink to {{solr_data_dir}}"
-    file:
-      src: "{{solr_data_dir}}"
-      dest: "{{full_solr_dir}}/data"
-      state: link
       owner: "{{solr_user}}"
       group: "{{solr_group}}"
   become: true
