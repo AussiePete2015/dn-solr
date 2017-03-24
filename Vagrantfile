@@ -262,6 +262,7 @@ if solr_addr_array.size > 0
     # Every Vagrant development environment requires a box. You can search for
     # boxes at https://atlas.hashicorp.com/search.
     config.vm.box = "centos/7"
+    # config.vm.box = "iamseth/rhel-7.3"
     config.vm.box_check_update = false
 
     # loop through all of the addresses in the `solr_addr_array` and, if we're
@@ -278,10 +279,23 @@ if solr_addr_array.size > 0
         # Create a two private networks, which each allow host-only access to the machine
         # using a specific IP.
         if machine_addr
+          # configure a private network with the input address
           config.vm.network "private_network", ip: machine_addr
+          # and configure a second private network based on that address
+          # (by simply shifting the third octet up by one)
           split_addr = machine_addr.split('.')
           api_addr = (split_addr[0..1] + [(split_addr[2].to_i + 10).to_s] + [split_addr[3]]).join('.')
           config.vm.network "private_network", ip: api_addr
+          # if this is the last machine in the list, then define a couple of
+          # CIDR blocks that can be used to differentiate between these two networks
+          # (where the first is the data network and the second is the api network);
+          # note we're assuming that a (set of) '\24' network address(es) was(were)
+          # passed in by the user and that all nodes are on the same '\24' network
+          # in this block of code
+          if machine_addr == solr_addr_array[-1]
+            data_cidr = (split_addr[0..2] + ['0']).join('.') + '/24'
+            api_cidr = (split_addr[0..1] + [(split_addr[2].to_i + 10).to_s] + ['0']).join('.') + '/24'
+          end
         end
         # if it's the last node in the list if input addresses, then provision
         # all of the nodes simultaneously (if the `--no-provision` flag was not
@@ -296,7 +310,7 @@ if solr_addr_array.size > 0
             ansible.limit = "all"
             ansible.playbook = "site.yml"
             ansible.groups = {
-              solf: solr_addr_array
+              solr: solr_addr_array
             }
             ansible.extra_vars = {
               proxy_env: {
@@ -305,12 +319,23 @@ if solr_addr_array.size > 0
                 proxy_username: proxy_username,
                 proxy_password: proxy_password
               },
-              data_iface: "eth1",
-              api_iface: "eth2",
+              # data_iface: 'eth1',
+              # api_iface: 'eth2',
+              iface_description_array: [
+                { as_var: 'data_iface', type: 'cidr', val: data_cidr },
+                { as_var: 'api_iface', type: 'cidr', val: api_cidr },
+              ],
               yum_repo_url: options[:yum_repo_url],
               local_solr_file: options[:local_solr_file],
               host_inventory: solr_addr_array,
               reset_proxy_settings: options[:reset_proxy_settings],
+              # overrides a few values from the 'vars/solr.yml' file that
+              # set options for the JVM we can't satisfy when testing locally
+              solr_java_ops: "-Xmx2g -Xss256k",
+              ui_java_ops: "-Xmx512m",
+              connectors_java_ops: "-Xmx1g -Xss256k",
+              # set the cloud type to 'vagrant' (which will trigger the use
+              # of static inventory in the playbook)
               cloud: "vagrant"
             }
             # if defined, set the 'extra_vars[:solr_url]' value to the value that was passed in on
