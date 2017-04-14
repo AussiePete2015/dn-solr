@@ -21,6 +21,21 @@ class OptionParser
   end
 end
 
+# a function that is used to parse Ansible (static) inventory files and
+# return a list of the node addresses contained in the file
+def addr_list_from_inventory_file(inventory_file)
+  first_field_list = []
+  File.open(inventory_file, 'r') do |f|
+    f.each_line do |line|
+      # grab the first field from each line
+      first_field_list << line.gsub(/\s+/, ' ').strip.split(" ")[0]
+    end
+  end
+  # return the entries that look like IP addresses (skipping the rest)
+  # and only return the unique values in the resulting list
+  first_field_list.select { |addr| (addr =~ Resolv::IPv4::Regex) }.uniq
+end
+
 # initialize a few values
 options = {}
 VALID_ZK_ENSEMBLE_SIZES = [3, 5, 7]
@@ -47,18 +62,11 @@ optparse = OptionParser.new do |opts|
     options[:solr_list] = solr_list.gsub(/^=/,'')
   end
 
-  options[:zookeeper_list] = nil
-  opts.on( '-z', '--zookeeper-list A1,A2[,...]', 'Zookeeper address list (multi-node commands)' ) do |zookeeper_list|
+  options[:inventory_file] = nil
+  opts.on( '-i', '--inventory-file FILE', 'Zookeeper (Ansible) inventory file' ) do |inventory_file|
     # while parsing, trim an '=' prefix character off the front of the string if it exists
-    # (would occur if the value was passed using an option flag like '-z=192.168.1.1')
-    options[:zookeeper_list] = zookeeper_list.gsub(/^=/,'')
-  end
-
-  options[:zk_inventory_file] = nil
-  opts.on( '-i', '--zk-inventory-file FILE', 'Zookeeper (Ansible) inventory file' ) do |zk_inventory_file|
-    # while parsing, trim an '=' prefix character off the front of the string if it exists
-    # (would occur if the value was passed using an option flag like '-z=192.168.1.1')
-    options[:zk_inventory_file] = zk_inventory_file.gsub(/^=/,'')
+    # (would occur if the value was passed using an option flag like '-i=/tmp/zookeeper_inventory')
+    options[:inventory_file] = inventory_file.gsub(/^=/,'')
   end
 
   options[:solr_path] = nil
@@ -133,7 +141,7 @@ provisioning_command = !((ARGV & provisioning_command_args).empty?) && (ARGV & n
 # and to see if multiple IP addresses are supported (or not) for the
 # command being invoked
 single_ip_command = !((ARGV & single_ip_commands).empty?)
-# and to see if a zookeeper ensemble must also be provided
+# and to see if a zookeeper inventory must also be provided
 no_zk_required_command = !(ARGV & no_zk_required_command_args).empty?
 
 if options[:solr_url] && !(options[:solr_url] =~ URI::regexp)
@@ -151,7 +159,7 @@ if options[:solr_url] && options[:local_solr_file]
   exit 2
 end
 
-if options[:zookeeper_list] && !options[:zk_inventory_file]
+if options[:inventory_file] && !File.file?(options[:inventory_file])
   print "ERROR; the if a zookeeper list is defined, a zookeeper inventory file must also be provided\n"
   exit 2
 end
@@ -166,7 +174,6 @@ end
 # a single node (for single-node deployments) or multiple nodes in a comma-separated list
 # (for multi-node deployments) that define a valid solr cluster
 solr_addr_array = []
-zookeeper_addr_array = []
 if provisioning_command || ip_required
   if !options[:solr_list]
     print "ERROR; IP address must be supplied (using the `-s, --solr-list` flag) for this vagrant command\n"
@@ -196,27 +203,17 @@ if provisioning_command || ip_required
       # ensemble consisting of an odd number of nodes greater than three, but less than seven
       # (any other topology is not supported, so an error is thrown)
       if provisioning_command && solr_addr_array.size > 1 && !no_zk_required_command
-        if !options[:zookeeper_list]
-          print "ERROR; A set of IP addresses must be supplied (using the `-z, --zookeeper-list` flag)\n"
-          print "       that point to an existing Zookeeper ensemble when provisioning a Solr cluster\n"
+        if !options[:inventory_file]
+          print "ERROR; A zookeeper inventory file must be supplied (using the `-i, --inventory-file` flag)\n"
+          print "       containing the (static) inventory file for an existing Zookeeper ensemble when\n"
+          print "       provisioning a Solr cluster\n"
           exit 1
         else
-          zookeeper_addr_array = options[:zookeeper_list].split(',').map { |elem| elem.strip }.reject { |elem| elem.empty? }
-          # check the input `zookeeper_addr_array` to ensure that all of the values passed in are
-          # legal IP addresses
-          not_ip_addr_list = zookeeper_addr_array.select { |addr| !(addr =~ Resolv::IPv4::Regex) }
-          if not_ip_addr_list.size > 0
-            # if some of the values are not valid IP addresses, print an error and exit
-            if not_ip_addr_list.size == 1
-              print "ERROR; input Zookeeper IP address #{not_ip_addr_list} is not a valid IP address\n"
-              exit 2
-            else
-              print "ERROR; input Zookeeper IP addresses #{not_ip_addr_list} are not valid IP addresses\n"
-              exit 2
-            end
-          end
+          # parse the inventory file that was passed in and retrieve the list of host addresses from it
+          zookeeper_addr_array = addr_list_from_inventory_file(options[:inventory_file])
           # and check to make sure that an appropriate number of zookeeper addresses were
-          # passed in (the size of the ensemble should be an odd number between three and seven)
+          # found in the inventory file (the size of the ensemble should be an odd number
+          # between three and seven)
           if !(VALID_ZK_ENSEMBLE_SIZES.include?(zookeeper_addr_array.size))
             print "ERROR; only a zookeeper cluster with an odd number of elements between three and\n"
             print "       seven is supported for multi-node solr deployments; the defined cluster\n"
@@ -342,6 +339,7 @@ if solr_addr_array.size > 0
               local_solr_file: options[:local_solr_file],
               host_inventory: solr_addr_array,
               reset_proxy_settings: options[:reset_proxy_settings],
+              zookeeper_inventory_file: options[:inventory_file],
               # overrides a few values from the 'vars/solr.yml' file that
               # set options for the JVM we can't satisfy when testing locally
               solr_java_ops: "-Xmx2g -Xss256k",
@@ -370,34 +368,6 @@ if solr_addr_array.size > 0
             # on the command-line (eg. "/tmp/local-vars-file.yml")
             if options[:local_vars_file]
               ansible.extra_vars[:local_vars_file] = options[:local_vars_file]
-            end
-            # if a zookeeper list was passed in and we're deploying more than one Solr,
-            # node, then pass the values in that list through as an extra variable (for
-            # use in configuring the SolrCloud cluster that we're deploying)
-            if zookeeper_addr_array.size > 1 && solr_addr_array.size > 1
-              ansible.extra_vars[:zookeeper_nodes] = zookeeper_addr_array
-              # if a zookeeper inventory file was passed in, then read that file
-              # and use the contents to construct an inventory hash to pass into
-              # our playbook
-              zookeeper_inventory = {}
-              zookeeper_inventory_file = options[:zk_inventory_file]
-              File.open(zookeeper_inventory_file, "r") do |file|
-                while (line = file.gets)
-                  split_line = line.split
-                  if split_line.size > 1 && zookeeper_addr_array.include?(split_line[0])
-                    hostname = split_line[0]
-                    inventory_hash = {}
-                    for val in split_line[1..-1]
-                      key,val = val.split('=')
-                      if val
-                        inventory_hash[key.to_sym] = val.delete("'")
-                      end
-                    end
-                    zookeeper_inventory[hostname] = inventory_hash
-                  end
-                end
-                ansible.extra_vars[:zookeeper_inventory] =  zookeeper_inventory
-              end
             end
           end     # end `machine.vm.provision "ansible" do |ansible|`
         end     # end `if machine_addr == solr_addr_array[-1]`
