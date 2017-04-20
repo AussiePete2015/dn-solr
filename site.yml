@@ -24,7 +24,7 @@
       vars:
         host_group_list:
           - { name: solr, node_list: "{{host_inventory}}" }
-          - { name: zookeeper, inventory_file: "{{zookeeper_inventory_file}}" }
+          - { name: zookeeper, inventory_file: "{{zookeeper_inventory_file | default(none)}}" }
       when: inventory_type == 'static'
 
 # Collect some Zookeeper related facts and determine the "private" IP addresses of
