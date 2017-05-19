@@ -67,7 +67,7 @@ Once the playbook run triggered by the [Vagrantfile](../Vagrantfile) is complete
 So, to recap, by using a single `vagrant ... up` command we were able to quickly spin up a cluster consisting of of three Fusion nodes and configure those nodes as a cluster that is associated with an existing Zookeeper ensemble. A similar `vagrant ... up` command could be used to build a cluster consisting of any number of Fusion nodes, provided that a Zookeeper ensemble has already been provisioned that can be associated with the nodes in that cluster.
 
 ## Separating instance creation from provisioning
-While the `vagrant up` commands that are shown above can be used to easily deploy Fusion to a single node or to build a Fusion cluster consisting of multiple nodes, the [Vagrantfile](../Vagrantfile) included in this distribution also supports separating out the creation of the virtual machine from the provisioning of that virtual machine using the Ansible playbook contained in this repository's [site.yml](../site.yml) file.
+While the `vagrant up` commands that are shown above can be used to easily deploy Fusion to a single node or to build a Fusion cluster consisting of multiple nodes, the [Vagrantfile](../Vagrantfile) included in this distribution also supports separating out the creation of the virtual machine from the provisioning of that virtual machine using the Ansible playbook contained in this repository's [provision-solr.yml](../provision-solr.yml) file.
 
 To create a set of virtual machines that we plan on using to build a Fusion cluster without provisioning Fusion to those machines, simply run a command similar to the following:
 
@@ -85,7 +85,7 @@ $ vagrant -s="192.168.34.28,192.168.34.29,192.168.34.30" \
     -i='./combined_inventory' provision
 ```
 
-That command will attach to the named instances and run the playbook in this repository's [site.yml](../site.yml) file on those node, resulting in a Fusion cluster consisting of the nodes that were created in the `vagrant ... up --no-provision` command that was shown, above.
+That command will attach to the named instances and run the playbook in this repository's [provision-solr.yml](../provision-solr.yml) file on those node, resulting in a Fusion cluster consisting of the nodes that were created in the `vagrant ... up --no-provision` command that was shown, above.
 
 ## Additional vagrant deployment options
 While the commands shown above will install Fusion with a reasonable, default configuration from a standard location, there are additional command-line parameters that can be used to control the deployment process triggered by a `vagrant ... up` or `vagrant ... provision` command. Here is a complete list of the command-line flags that can be supported by the [Vagrantfile](../Vagrantfile) in this repository:

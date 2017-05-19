@@ -2,7 +2,7 @@
 Description=Apache Solr server (broker)
 Documentation=http://solr.apache.org/documentation.html
 Requires=network.target remote-fs.target
-After=network.target remote-fs.target
+After=network.target remote-fs.target syslog.target
 
 [Service]
 Type=simple

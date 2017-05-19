@@ -28,10 +28,9 @@ def addr_list_from_inventory_file(inventory_file, group_name)
   inventory_json = JSON.parse(inventory_str)
   inventory_group = inventory_json[group_name]
   # if we found a corresponding group in the inventory file, then
-  # return the hosts list in that group
-  return inventory_group['hosts'] if inventory_group
-  # otherwise, return the keys in the 'hostvars' hash map under the '_meta' hash map
-  inventory_json['_meta']['hostvars'].keys
+  # return the hosts list in that group, otherwise, return the keys
+  # in the 'hostvars' hash map under the '_meta' hash map
+  (inventory_group ? inventory_group['hosts'] : inventory_json['_meta']['hostvars'].keys)
 end
 
 # initialize a few values
@@ -207,7 +206,8 @@ if provisioning_command || ip_required
           print "       provisioning a Solr cluster\n"
           exit 1
         else
-          # parse the inventory file that was passed in and retrieve the list of host addresses from it
+          # parse the inventory file that was passed in and retrieve the list
+          # of zookeeper addresses from it
           zookeeper_addr_array = addr_list_from_inventory_file(options[:inventory_file], 'zookeeper')
           # and check to make sure that an appropriate number of zookeeper addresses were
           # found in the inventory file (the size of the ensemble should be an odd number
@@ -277,46 +277,50 @@ if solr_addr_array.size > 0
     # creating VMs, create a VM for each machine; if we're just provisioning the
     # VMs using an ansible playbook, then wait until the last VM in the loop and
     # trigger the playbook runs for all of the nodes simultaneously using the
-    # `site.yml` playbook
+    # `provision-solr.yml` playbook
     solr_addr_array.each do |machine_addr|
-      # Customize the amount of memory on the VM
-      config.vm.provider "virtualbox" do |vb|
-        vb.memory = "8192"
-      end
       config.vm.define machine_addr do |machine|
+        # disable the default synced folder
+        machine.vm.synced_folder ".", "/vagrant", disabled: true
+        # customize the amount of memory in the VM
+        machine.vm.provider "virtualbox" do |vb|
+          vb.memory = "4096"
+        end
         # Create a two private networks, which each allow host-only access to the machine
         # using a specific IP.
-        if machine_addr
-          # configure a private network with the input address
-          config.vm.network "private_network", ip: machine_addr
-          # and configure a second private network based on that address
-          # (by simply shifting the third octet up by one)
-          split_addr = machine_addr.split('.')
-          api_addr = (split_addr[0..1] + [(split_addr[2].to_i + 10).to_s] + [split_addr[3]]).join('.')
-          config.vm.network "private_network", ip: api_addr
-          # if this is the last machine in the list, then define a couple of
-          # CIDR blocks that can be used to differentiate between these two networks
-          # (where the first is the data network and the second is the api network);
-          # note we're assuming that a (set of) '\24' network address(es) was(were)
-          # passed in by the user and that all nodes are on the same '\24' network
-          # in this block of code
-          if machine_addr == solr_addr_array[-1]
-            data_cidr = (split_addr[0..2] + ['0']).join('.') + '/24'
-            api_cidr = (split_addr[0..1] + [(split_addr[2].to_i + 10).to_s] + ['0']).join('.') + '/24'
-          end
+        machine.vm.network "private_network", ip: machine_addr
+        split_addr = machine_addr.split('.')
+        api_addr = (split_addr[0..1] + [(split_addr[2].to_i + 10).to_s] + [split_addr[3]]).join('.')
+        machine.vm.network "private_network", ip: api_addr
+        # set the memory for this instance
+        # if this is the last machine in the list, then define a couple of
+        # CIDR blocks that can be used to differentiate between these two networks
+        # (where the first is the data network and the second is the api network);
+        # note we're assuming that a (set of) '\24' network address(es) was(were)
+        # passed in by the user and that all nodes are on the same '\24' network
+        # in this block of code
+        if machine_addr == solr_addr_array[-1]
+          data_cidr = (split_addr[0..2] + ['0']).join('.') + '/24'
+          api_cidr = (split_addr[0..1] + [(split_addr[2].to_i + 10).to_s] + ['0']).join('.') + '/24'
         end
         # if it's the last node in the list if input addresses, then provision
         # all of the nodes simultaneously (if the `--no-provision` flag was not
         # set, of course)
         if machine_addr == solr_addr_array[-1]
-          # now, use the playbook in the `site.yml' file to provision our
-          # nodes with Solr (and configure them as a cluster if there
+          if options[:inventory_file]
+            if !File.directory?('.vagrant/provisioners/ansible/inventory')
+              mkdir_output = `mkdir -p .vagrant/provisioners/ansible/inventory`
+            end
+            ln_output = `ln -sf #{File.expand_path(options[:inventory_file])} .vagrant/provisioners/ansible/inventory`
+          end
+          # now, use the playbook in the `provision-solr.yml' file to provision
+          # our nodes with Solr (and configure them as a cluster if there
           # is more than one node)
           machine.vm.provision "ansible" do |ansible|
-            # set the limit to 'all' in order to provision all of machines on the
-            # list in a single playbook run
+            # set the limit to 'all' in order to provision all of machines on
+            # the list in a single playbook run
             ansible.limit = "all"
-            ansible.playbook = "site.yml"
+            ansible.playbook = "provision-solr.yml"
             ansible.groups = {
               solr: solr_addr_array
             }
@@ -333,11 +337,6 @@ if solr_addr_array.size > 0
                 { as_var: 'data_iface', type: 'cidr', val: data_cidr },
                 { as_var: 'api_iface', type: 'cidr', val: api_cidr },
               ],
-              yum_repo_url: options[:yum_repo_url],
-              local_solr_file: options[:local_solr_file],
-              host_inventory: solr_addr_array,
-              reset_proxy_settings: options[:reset_proxy_settings],
-              zookeeper_inventory_file: options[:inventory_file],
               # overrides a few values from the 'vars/solr.yml' file that
               # set options for the JVM we can't satisfy when testing locally
               solr_java_ops: "-Xmx2g -Xss256k",
@@ -345,6 +344,21 @@ if solr_addr_array.size > 0
               connectors_java_ops: "-Xmx1g -Xss256k",
               inventory_type: "static"
             }
+            # if a local solr distribution file was provided, then set the
+            # corresponding extra variable for our playbook run
+            if options[:local_solr_file]
+              ansible.extra_vars[:local_solr_file] = options[:local_solr_file]
+            end
+            # if a local yum repositiory  was set, then set an extra variable
+            # containing the named repository
+            if options[:yum_repo_url]
+              ansible.extra_vars[:yum_repo_url] = options[:yum_repo_url]
+            end
+            # if the flag to reset the proxy settings was set, then set an extra variable
+            # containing that value
+            if options[:reset_proxy_settings]
+              ansible.extra_vars[:reset_proxy_settings] = options[:reset_proxy_settings]
+            end
             # if defined, set the 'extra_vars[:solr_url]' value to the value that was passed in on
             # the command-line (eg. "https://10.0.2.2/fusion-2.4.4.tar.gz")
             if options[:solr_url]
