@@ -1,49 +1,52 @@
+#!/usr/bin/env ansible-playbook
+#
 # (c) 2016 DataNexus Inc.  All Rights Reserved
 ---
 # Build our solr and zookeeper host groups
 - name: Create solr and zookeeper host groups
-  hosts: "{{host_inventory}}"
+  hosts: localhost
   gather_facts: no
   tasks:
-    # load the 'local variables file', if one was defined, to get any variables
-    # we might need from that file when constructing our host groups
-    - name: Load local variables file
-      include_vars:
-        file: "{{local_vars_file}}"
-      when: not (local_vars_file is undefined or local_vars_file is none or local_vars_file | trim == '')
-    # then, build our host groups
-    - include_role:
-        name: build-app-host-groups
-      vars:
-        host_group_list:
-          - name: solr
-          - name: zookeeper
-      when: inventory_type == 'dynamic'
-    - include_role:
-        name: build-app-host-groups
-      vars:
-        host_group_list:
-          - { name: solr, node_list: "{{host_inventory}}" }
-          - { name: zookeeper, inventory_file: "{{zookeeper_inventory_file | default(none)}}" }
-      when: inventory_type == 'static'
+    # if we're using dynamic provisioning; build the host groups from the
+    # meta-data associated with the matching nodes in the selected cloud
+    - block:
+      # load the 'local variables file', if one was defined, to get any variables
+      # we might need from that file when constructing our host groups
+      - name: Load local variables file
+        include_vars:
+          file: "{{local_vars_file}}"
+        when: not (local_vars_file is undefined or local_vars_file is none or local_vars_file | trim == '')
+      # then, build our host groups
+      - include_role:
+          name: build-app-host-groups
+        vars:
+          host_group_list:
+            - name: solr
+            - name: zookeeper
+      when: cloud is defined and (cloud == 'aws' or cloud == 'osp')
 
 # Collect some Zookeeper related facts and determine the "private" IP addresses of
 # the nodes in the Zookeeper ensemble (from their "public" IP addresses and the `data_iface`
 # variable that was passed in as part of this playbook run) if a list of "public"  Zookeeper
 # IP addresses was passed in.
 - name: Gather facts from Zookeeper host group (if defined)
-  hosts: zookeeper:&zookeeper_nodes
+  hosts: zookeeper
   tasks: []
 
-# Then, deploy Solr (Fusion) to the nodes in the `host_inventory` that was passed in (if there
-# is more than one node passed in, those nodes will be configured as a single Solr cluster)
+# Deploy Solr (Fusion) to the nodes in the `solr` host group (this group must
+# be defined in the static inventory file that was input, if one was used, or
+# built from the dynamic inventory and the input tags if we're deploying to
+# an AWS or OpenStack cloud); note that if there is more than one node in
+# the `solr` host group, those nodes will be configured as a Solr cluster
 - name: Install/configure Solr server(s)
-  hosts: solr:&solr_nodes
+  hosts: solr
   gather_facts: no
   vars_files:
     - vars/solr.yml
   vars:
     - combined_package_list: "{{ (default_packages|default([])) | union(solr_package_list) | union((install_packages_by_tag|default({})).solr|default([])) }}"
+    - solr_nodes: "{{groups['solr']}}"
+    - zookeeper_nodes: "{{groups['zookeeper']}}"
   pre_tasks:
     # first, load the local variables file (if one was defined); this will initialize
     # the variables used in our playbook (and override any values in the 'vars/solr.yml'
@@ -86,7 +89,7 @@
         become: true
         when: rhel_username is defined and rhel_password is defined and rhel_consumer_id is defined
       when: ansible_distribution == 'RedHat'
-  # Now that we have all of the facts we need, run the roles that are used to
+  # Now that we have all of the facts we need, we can run the roles that are used to
   # deploy and configure Solr
   roles:
     - role: get-iface-addr

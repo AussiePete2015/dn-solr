@@ -2,7 +2,7 @@
 Playbooks/Roles used to deploy [LucidWorks Fusion](https://lucidworks.com/fusion/) (Solr)
 
 # Installation
-To install Lucidworks Fusion using the `site.yml` playbook in this repository, first clone the contents of this repository to a local directory using a command like the following:
+To install Lucidworks Fusion using the `provision-solr.yml` playbook in this repository, first clone the contents of this repository to a local directory using a command like the following:
 
 ```bash
 $ git clone --recursive https://github.com/Datanexus/dn-solr
@@ -13,7 +13,7 @@ That command will pull down the repository and it's dependencies. Currently this
 The only other requirements for using the playbook in this repository are a relatively recent (v2.x) release of Ansible. The easiest way to obtain a recent relese if Ansible is via a `pip install`, which requires that Python and pip are both installed locally. We have performed all of our testing using a recent (2.7.x) version of Python (Python 2); your mileage may vary if you attempt to run the playbook or the attached dynamic inventory scripts under a newer (v3.x) release of Python (Python 3).
 
 # Using this role to deploy Fusion
-The [site.yml](site.yml) file at the top-level of this repository supports the both single-node Fusion deployments and the deployment of multi-node Fusion clusters. The process of deploying Fusion to these nodes will vary, depending on whether you are managing your inventory dynamically or statically (more on this topic [here](docs/Dynamic-vs-Static-Inventory.md)), whether you are performing a single-node deployment or are deploying a Fusion cluster, and where you are downloading the packages and dependencies from that are needed to run Fusion on those nodes.
+The [provision-solr.yml](provision-solr.yml) file at the top-level of this repository supports the both single-node Fusion deployments and the deployment of multi-node Fusion clusters. The process of deploying Fusion to these nodes will vary, depending on whether you are managing your inventory dynamically or statically (more on this topic [here](docs/Dynamic-vs-Static-Inventory.md)), whether you are performing a single-node deployment or are deploying a Fusion cluster, and where you are downloading the packages and dependencies from that are needed to run Fusion on those nodes.
 
 We discuss the various deployment scenarios supported by this playbook in [this document](docs/Deployment-Scenarios.md) and discuss how the [Vagrantfile](Vagrantfile) in this repository can be used to deploy Fusion (both single-node deployments and multi-node clusters are supported) to a set of VMs hosted locally in VirtualBox [here](docs/Deployment-via-Vagrant.md).
 
