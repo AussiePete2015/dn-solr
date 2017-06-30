@@ -15,7 +15,7 @@
       dest: /tmp
       mode: 0644
       validate_certs: no
-    environment: "{{environment_vars}}"
+    environment: "{{environment_vars | default({})}}"
   - set_fact:
       local_filename: "{{solr_url | basename}}"
   when: not(install_from_dir)
